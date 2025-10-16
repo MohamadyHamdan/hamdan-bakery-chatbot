@@ -1,0 +1,22 @@
+EventForecast — Your Daily Weather & Event Planner
+
+EventForecast is a smart assistant that helps users plan their days by providing accurate weather forecasts and local event recommendations in one place. Whether you want to know if you should carry an umbrella or if there's a concert happening nearby, EventForecast has you covered.
+
+Mission:
+To make daily planning effortless by combining real-time weather insights with curated local events, helping users make the most of their day.
+
+Services:
+- Real-time weather forecasts for any city.
+- Local events and attraction recommendations.
+- Personalized outfit or umbrella suggestions based on forecast.
+- User feedback collection to improve future recommendations.
+
+Team:
+- Mohamad Hamdan — Founder & CEO (former travel agent passionate about daily planning tools).
+- Lina Badran — CTO (data & AI background, focused on weather and event integrations).
+
+Unique Value Proposition:
+EventForecast combines two essential daily needs — weather updates and event discovery — into a single, simple chatbot interface. Instead of switching between multiple apps, users can get everything they need through one conversation.
+
+Contact:
+info@eventforecast.ai | www.eventforecast.ai
