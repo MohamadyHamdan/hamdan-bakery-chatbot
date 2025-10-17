@@ -1,22 +1,37 @@
-EventForecast — Your Daily Weather & Event Planner
+hamdan_bakery
+Tagline: Warm bread, honest ingredients.
 
-EventForecast is a smart assistant that helps users plan their days by providing accurate weather forecasts and local event recommendations in one place. Whether you want to know if you should carry an umbrella or if there's a concert happening nearby, EventForecast has you covered.
+hamdan_bakery is a neighborhood bakery focused on slow-fermented breads, classic viennoiserie,
+heritage-inspired pastries, and custom celebration cakes. We use stone‑milled flours,
+real butter, seasonal produce, and avoid artificial additives. Our menu highlights
+signature sourdough loaves, baguettes, multigrain breads, croissants, chocolate
+hazelnut croissants, za’atar and cheese bakes, cookies, and weekly limited editions.
 
-Mission:
-To make daily planning effortless by combining real-time weather insights with curated local events, helping users make the most of their day.
+Mission
+To make honest, everyday bread—and the joy that comes with it—accessible to everyone,
+while supporting local suppliers and reducing waste.
 
-Services:
-- Real-time weather forecasts for any city.
-- Local events and attraction recommendations.
-- Personalized outfit or umbrella suggestions based on forecast.
-- User feedback collection to improve future recommendations.
+What we offer
+• Daily breads & baguettes
+• Viennoiserie and pastries
+• Celebration cakes (48–72h notice)
+• Coffee & beverages
+• Same‑day delivery in Beirut (selected areas)
+• Pre‑orders for events and offices
 
-Team:
-- Mohamad Hamdan — Founder & CEO (former travel agent passionate about daily planning tools).
-- Lina Badran — CTO (data & AI background, focused on weather and event integrations).
+Why we’re different
+• Slow fermentation for flavor and digestibility
+• Stone‑milled local flours when available
+• No artificial preservatives
+• Daily “last-hour” discounts to cut waste
+• Vegan and low‑sugar options on request
 
-Unique Value Proposition:
-EventForecast combines two essential daily needs — weather updates and event discovery — into a single, simple chatbot interface. Instead of switching between multiple apps, users can get everything they need through one conversation.
+Operations
+• Location: Verdun, Beirut (pickup & delivery)
+• Hours: Mon–Sat 07:00–21:00; Sun 08:00–16:00
+• Payments: cash & cards
+• Contact (demo): hello@hamdan-bakery.example | +961-01-234-567
 
-Contact:
-info@eventforecast.ai | www.eventforecast.ai
+Allergens & notes
+Products may contain gluten, dairy, eggs, and nuts. Ask for allergen-friendly suggestions.
+This is a demo business profile used for an AI agent assignment.

@@ -1,337 +1,155 @@
-"""
-EventForecast - Business Agent Chatbot
-Deployment script for Gradio interface
-
-This file can be used to deploy the chatbot on HuggingFace Spaces or run locally.
-"""
-
 import os
 import json
-from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
+import fitz  # PyMuPDF
 import gradio as gr
-import PyPDF2
 
-# Load environment variables
+# ==============================
+# Load API key
+# ==============================
 load_dotenv()
+if "OPENAI_API_KEY" not in os.environ:
+    raise ValueError("❌ OPENAI_API_KEY not found. Make sure it's set in .env file.")
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI()
 
-
-# Load business summary from text file
-def load_business_summary():
-    try:
-        with open('me/business_summary.txt', 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "Business information not available."
+# ==============================
+# Load Knowledge Base
+# ==============================
+TXT_PATH = "me/business_summary.txt"
+PDF_PATH = "me/about_business.pdf"
 
 
-# Load business information from PDF
-def load_business_pdf():
-    try:
-        with open('me/about_business.pdf', 'rb') as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-            return text
-    except Exception as e:
-        return "PDF information not available."
+def load_txt(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
+def load_pdf(path):
+    text = ""
+    with fitz.open(path) as doc:
+        for page in doc:
+            text += page.get_text()
+    return text
 
-business_summary = load_business_summary()
-business_pdf_content = load_business_pdf()
+business_text = load_txt(TXT_PATH)
+business_pdf_text = load_pdf(PDF_PATH)
+knowledge_base = (business_text + "\n\n" + business_pdf_text)[:10000]  # truncate if needed
 
+# ==============================
+# System Prompt
+# ==============================
+system_prompt = f"""
+You are hamdan_bakery, a friendly neighborhood artisan bakery chatbot 🍞.
+Use ONLY the information provided below to answer user questions. 
+Do not make up or invent details — if you don't find the answer, 
+call the record_feedback tool.
 
-# Tool 1: Record customer interest (lead collection)
-def record_customer_interest(email, name, message):
-    """
-    Records customer interest and contact information for lead generation.
-    
-    Args:
-        email: Customer's email address
-        name: Customer's name
-        message: Message or notes about their interest
-    
-    Returns:
-        Confirmation message
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_entry = f"""
-{'='*50}
-NEW LEAD RECORDED
-{'='*50}
-Timestamp: {timestamp}
-Name: {name}
-Email: {email}
-Message: {message}
-{'='*50}
+Knowledge base:
+{knowledge_base}
+
+Guidelines:
+- Speak in a warm and concise tone, as if you are the bakery.
+- When users ask about orders, products, or services, refer to the text above.
+- Encourage users to leave their name and email for pre-orders, custom cakes, or delivery.
+- If a question is outside your knowledge, log it with record_feedback(question).
 """
-    
-    print(log_entry)
-    
-    # Also save to file
-    try:
-        with open('leads.log', 'a', encoding='utf-8') as f:
-            f.write(log_entry + '\n')
-    except Exception as e:
-        print(f"Error writing to leads.log: {e}")
-    
-    return f"Thank you {name}! Your information has been recorded. We'll reach out to you at {email} soon."
 
+# ==============================
+# Tools
+# ==============================
+def record_customer_interest(email: str, name: str, message: str):
+    log = f"[LEAD] Name: {name}, Email: {email}, Message: {message}"
+    print(log)
+    with open("customer_leads.log", "a", encoding="utf-8") as f:
+        f.write(log + "\n")
 
-# Tool 2: Record feedback or unanswered questions
-def record_feedback(question):
-    """
-    Records customer feedback or questions that the bot couldn't answer.
-    
-    Args:
-        question: The question or feedback from the customer
-    
-    Returns:
-        Confirmation message
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_entry = f"""
-{'='*50}
-FEEDBACK/UNANSWERED QUESTION
-{'='*50}
-Timestamp: {timestamp}
-Question: {question}
-{'='*50}
-"""
-    
-    print(log_entry)
-    
-    # Also save to file
-    try:
-        with open('feedback.log', 'a', encoding='utf-8') as f:
-            f.write(log_entry + '\n')
-    except Exception as e:
-        print(f"Error writing to feedback.log: {e}")
-    
-    return "Thank you for your feedback! This has been logged and our team will review it."
+def record_feedback(question: str):
+    log = f"[FEEDBACK] Unanswered question: {question}"
+    print(log)
+    with open("feedback.log", "a", encoding="utf-8") as f:
+        f.write(log + "\n")
 
-
-# Define tools for OpenAI API
 tools = [
     {
         "type": "function",
         "function": {
             "name": "record_customer_interest",
-            "description": "Records a customer's contact information and interest in our services. Use this when a customer wants to be contacted, needs help, or expresses interest in EventForecast.",
+            "description": "Record customer leads with name, email, and message",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "email": {
-                        "type": "string",
-                        "description": "The customer's email address"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "The customer's name"
-                    },
-                    "message": {
-                        "type": "string",
-                        "description": "Message about their interest or needs"
-                    }
+                    "email": {"type": "string"},
+                    "name": {"type": "string"},
+                    "message": {"type": "string"}
                 },
                 "required": ["email", "name", "message"]
-            }
-        }
+            },
+        },
     },
     {
         "type": "function",
         "function": {
             "name": "record_feedback",
-            "description": "Records customer feedback or questions that cannot be answered. Use this when you don't know the answer to a customer's question or when they provide feedback.",
+            "description": "Log a question the bot cannot answer",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "question": {
-                        "type": "string",
-                        "description": "The customer's question or feedback"
-                    }
+                    "question": {"type": "string"}
                 },
                 "required": ["question"]
-            }
-        }
+            },
+        },
     }
 ]
 
-# Map tool names to functions
-available_functions = {
-    "record_customer_interest": record_customer_interest,
-    "record_feedback": record_feedback
-}
-
-
-# System prompt that defines the agent's behavior
-system_prompt = f"""
-You are an AI assistant for EventForecast, a smart assistant service that helps users plan their days. Your role is to represent the business professionally, answer questions about our services, and help collect leads.
-
-BUSINESS INFORMATION:
-{business_summary}
-
-ADDITIONAL DETAILS:
-{business_pdf_content}
-
-YOUR RESPONSIBILITIES:
-1. Stay in character as a friendly, professional EventForecast representative
-2. Answer questions about EventForecast using the information provided above
-3. Provide general weather information and event suggestions when asked
-4. When customers express interest or need help, collect their contact information using the record_customer_interest tool
-5. If you don't know the answer to a specific question, use the record_feedback tool to log it for our team
-6. Encourage potential customers to leave their contact information so we can help them
-7. Be helpful and enthusiastic about how EventForecast makes daily planning effortless
-
-HANDLING WEATHER/EVENT QUESTIONS:
-When users ask about weather or events:
-- Provide helpful information based on your knowledge about typical weather patterns and common events
-- For weather: Give general climate information and seasonal expectations
-- For events: Suggest popular attractions, cultural events, or seasonal activities in that city
-- Always mention that EventForecast provides real-time, personalized weather and event recommendations
-- Encourage them to sign up for the full EventForecast service for live, up-to-date information
-- Example: "Paris in [current season] typically has [weather info]. Popular events this time of year include [cultural events]. For real-time weather updates and personalized event recommendations, our EventForecast service provides live data! Would you like to learn more?"
-
-GUIDELINES:
-- Be conversational and friendly while maintaining professionalism
-- Provide helpful weather and event information based on your knowledge, then promote the EventForecast service for real-time data
-- Focus on how EventForecast combines weather updates and event discovery in one chatbot
-- Emphasize our mission: making daily planning effortless
-- When you don't have specific information (like pricing or hours), acknowledge this and use record_feedback to log the question
-- Always try to collect contact information from interested customers
-
-Remember: Your goal is to help customers understand our services and encourage them to reach out!
-"""
-
-
-def chat_with_agent(user_message, chat_history):
-    """
-    Main chat function that handles user messages and agent responses.
-    
-    Args:
-        user_message: The user's input message
-        chat_history: List of previous messages in the conversation
-    
-    Returns:
-        Updated chat history
-    """
-    # Build messages array for OpenAI API
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Add chat history
-    for user_msg, assistant_msg in chat_history:
-        messages.append({"role": "user", "content": user_msg})
-        if assistant_msg:
-            messages.append({"role": "assistant", "content": assistant_msg})
-    
-    # Add current user message
-    messages.append({"role": "user", "content": user_message})
-    
-    # Call OpenAI API
+# ==============================
+# Agent Function
+# ==============================
+def run_agent(user_input, chat_history):
+    messages = [{"role": "system", "content": system_prompt}] + chat_history + [
+        {"role": "user", "content": user_input}
+    ]
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # More reliable and widely available
+        model="gpt-4o-mini",
         messages=messages,
         tools=tools,
-        tool_choice="auto"
-    )
-    
-    assistant_message = response.choices[0].message
-    
-    # Check if the model wants to call a tool
-    if assistant_message.tool_calls:
-        # Add assistant message with tool calls to messages
-        messages.append(assistant_message)
-        
-        # Process each tool call
-        for tool_call in assistant_message.tool_calls:
-            function_name = tool_call.function.name
-            function_args = json.loads(tool_call.function.arguments)
-            
-            print(f"\n[Tool Call] {function_name}")
-            print(f"[Arguments] {function_args}")
-            
-            # Execute the function
-            function_to_call = available_functions[function_name]
-            function_response = function_to_call(**function_args)
-            
-            # Add tool response to messages
-            messages.append({
-                "tool_call_id": tool_call.id,
-                "role": "tool",
-                "name": function_name,
-                "content": function_response
-            })
-        
-        # Get final response from the model
-        second_response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages
-        )
-        
-        final_message = second_response.choices[0].message.content
-    else:
-        # No tool calls, just return the response
-        final_message = assistant_message.content
-    
-    # Update chat history
-    chat_history.append((user_message, final_message))
-    
-    return "", chat_history
-
-
-# Create Gradio ChatInterface
-with gr.Blocks(title="EventForecast - AI Assistant") as demo:
-    gr.Markdown(
-        """
-        # 🌤️ EventForecast - AI Business Assistant
-        
-        Welcome! I'm here to help you learn about EventForecast - your daily weather & event planner.
-        
-        **I can help you with:**
-        - Learn about our services and features
-        - Understand how EventForecast works
-        - Meet our team
-        - Schedule a consultation
-        - Answer questions about combining weather and events
-        
-        Feel free to ask me anything!
-        """
-    )
-    
-    chatbot = gr.Chatbot(height=400)
-    
-    with gr.Row():
-        msg = gr.Textbox(
-            label="Your Message",
-            placeholder="Type your message here...",
-            lines=2,
-            scale=4
-        )
-        send_btn = gr.Button("Send", variant="primary", scale=1)
-    
-    clear = gr.Button("Clear Chat")
-    
-    # Handle message submission (both Enter key and Send button)
-    msg.submit(chat_with_agent, [msg, chatbot], [msg, chatbot])
-    send_btn.click(chat_with_agent, [msg, chatbot], [msg, chatbot])
-    
-    # Handle clear button
-    clear.click(lambda: None, None, chatbot, queue=False)
-    
-    gr.Markdown(
-        """
-        ---
-        *Powered by OpenAI | Built for EventForecast*
-        """
+        tool_choice="auto",
     )
 
+    message = response.choices[0].message
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
+
+            if tool_name == "record_customer_interest":
+                record_customer_interest(**tool_args)
+                return "Thanks for your interest! We’ve logged your info and will get back to you soon 📝"
+
+            elif tool_name == "record_feedback":
+                record_feedback(**tool_args)
+                return "Hmm, I’m not sure about that — but I’ve logged your question so we can follow up 👌"
+
+    return message.content
+
+# ==============================
+# Gradio Interface
+# ==============================
+chat_history = []
+
+def chatbot_interface(user_input, history):
+    global chat_history
+    reply = run_agent(user_input, chat_history)
+    chat_history.append({"role": "user", "content": user_input})
+    chat_history.append({"role": "assistant", "content": reply})
+    return reply
+
+demo = gr.ChatInterface(
+    fn=chatbot_interface,
+    title="🥐 hamdan_bakery Chatbot",
+    description="Ask me about our breads, pastries, cakes, or place an order!",
+)
 
 if __name__ == "__main__":
     demo.launch()
